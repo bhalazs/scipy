@@ -55,6 +55,8 @@ def root(fun, x0, args=(), method='hybr', jac=None, tol=None, callback=None,
         Jacobian will be estimated numerically.
         `jac` can also be a callable returning the Jacobian of `fun`. In
         this case, it must accept the same arguments as `fun`.
+        Moreover, it can also be a subclass of any of the inexact Newton solvers,
+        if one would like to use a customized matrix-vector product evaluation.
     tol : float, optional
         Tolerance for termination. For detailed control, use solver-specific
         options.
@@ -322,14 +324,21 @@ def _root_nonlin_solve(fun, x0, args=(), jac=None,
     if jac_options is None:
         jac_options = dict()
 
-    jacobian = {'broyden1': nonlin.BroydenFirst,
-                'broyden2': nonlin.BroydenSecond,
-                'anderson': nonlin.Anderson,
-                'linearmixing': nonlin.LinearMixing,
-                'diagbroyden': nonlin.DiagBroyden,
-                'excitingmixing': nonlin.ExcitingMixing,
-                'krylov': nonlin.KrylovJacobian
-                }[_method]
+    jac_types = {'broyden1': nonlin.BroydenFirst,
+                 'broyden2': nonlin.BroydenSecond,
+                 'anderson': nonlin.Anderson,
+                 'linearmixing': nonlin.LinearMixing,
+                 'diagbroyden': nonlin.DiagBroyden,
+                 'excitingmixing': nonlin.ExcitingMixing,
+                 'krylov': nonlin.KrylovJacobian}
+
+    if isinstance(jac, jac_types.values()):
+        if not isinstance(jac, jac_types[_method]):
+            ValueError('Jacobian type does not match with selected solver')
+        else:
+            jacobian = jac
+    else:
+        jacobian = jac_types[_method]
 
     if args:
         if jac is True:
